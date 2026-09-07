@@ -178,7 +178,7 @@ Update the connection string in `appsettings.json`:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=.;Database=Trainee_DB;Trusted_Connection=True;TrustServerCertificate=True;"
+    "DefaultConnection": "Server=YOUR-SERVER-NAME;Database=YOURDB;Trusted_Connection=True;TrustServerCertificate=True;"
   }
 }
 ```
@@ -190,7 +190,7 @@ For SQL Server Express, you may need:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=.\\SQLEXPRESS;Database=Trainee_DB;Trusted_Connection=True;TrustServerCertificate=True;"
+    "DefaultConnection": "Server=.\\SQLEXPRESS;Database=YOURDB;Trusted_Connection=True;TrustServerCertificate=True;"
   }
 }
 ```
