@@ -2,6 +2,12 @@
 
 @{
     ViewData["Title"] = "Document Text";
+
+    string searchTerm =
+       ViewBag.SearchTerm as string ?? string.Empty;
+
+    int totalMatches =
+        ViewBag.TotalMatches ?? 0;
 }
 
 <div class="container mt-4">
@@ -22,7 +28,69 @@
             Back to Documents
         </a>
     </div>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form asp-controller="Documents"
+                  asp-action="ViewText"
+                  method="get">
 
+                <input type="hidden"
+                       name="id"
+                       value="@Model.DocumentId" />
+
+                <label for="searchTerm"
+                       class="form-label fw-bold">
+                    Search inside this document
+                </label>
+
+                <div class="input-group">
+                    <input type="text"
+                           id="searchTerm"
+                           name="searchTerm"
+                           value="@searchTerm"
+                           class="form-control"
+                           placeholder="Enter a word or phrase..."
+                           required />
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        Find
+                    </button>
+
+                    @if (!string.IsNullOrWhiteSpace(searchTerm))
+                    {
+                        <a asp-controller="Documents"
+                           asp-action="ViewText"
+                           asp-route-id="@Model.DocumentId"
+                           class="btn btn-outline-secondary">
+                            Clear
+                        </a>
+                    }
+                </div>
+            </form>
+
+            @if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                if (totalMatches > 0)
+                {
+                    <div class="alert alert-success mt-3 mb-0">
+                        Found <strong>@totalMatches</strong>
+                        occurrence(s) of
+                        <strong>"@searchTerm"</strong>
+                        in this document.
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning mt-3 mb-0">
+                        The text
+                        <strong>"@searchTerm"</strong>
+                        was not found in this document.
+                    </div>
+                }
+            }
+        </div>
+    </div>
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-dark text-white">
             Document Information
@@ -67,6 +135,7 @@
         </div>
     </div>
 
+
     @if (!Model.Contents.Any())
     {
         <div class="alert alert-warning">
@@ -99,6 +168,7 @@
             </div>
         }
     }
+    
 </div>
 
 <style>
@@ -115,4 +185,110 @@
         background-color: #f8f9fa;
         border-radius: 5px;
     }
+
+    
+        .extracted-text {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            line-height: 1.7;
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            color: #212529;
+            max-height: 600px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .document-highlight {
+            background-color: #ffdf5d;
+            color: #000;
+            font-weight: 600;
+            padding: 1px 2px;
+            border-radius: 3px;
+        }
+
+        .current-highlight {
+            background-color: #ff9800;
+            outline: 2px solid #d97706;
+        }
+
 </style>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchTerm =
+            @Html.Raw(
+                    System.Text.Json.JsonSerializer.Serialize(
+                            searchTerm));
+
+        if (!searchTerm) {
+            return;
+        }
+
+        const contentAreas =
+            document.querySelectorAll(".extracted-text");
+
+        contentAreas.forEach(function (contentArea) {
+            highlightText(contentArea, searchTerm);
+        });
+
+        const firstMatch =
+            document.querySelector(".document-highlight");
+
+        if (firstMatch) {
+            firstMatch.classList.add("current-highlight");
+
+            firstMatch.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+        }
+    });
+
+    function highlightText(container, searchTerm) {
+        const originalText = container.textContent;
+        const lowerText = originalText.toLowerCase();
+        const lowerSearchTerm = searchTerm.toLowerCase();
+
+        container.textContent = "";
+
+        let currentPosition = 0;
+        let matchPosition;
+
+        while ((matchPosition = lowerText.indexOf(
+            lowerSearchTerm,
+            currentPosition)) !== -1) {
+
+            const textBeforeMatch =
+                originalText.substring(
+                    currentPosition,
+                    matchPosition);
+
+            container.appendChild(
+                document.createTextNode(textBeforeMatch));
+
+            const highlightedElement =
+                document.createElement("mark");
+
+            highlightedElement.className =
+                "document-highlight";
+
+            highlightedElement.textContent =
+                originalText.substring(
+                    matchPosition,
+                    matchPosition + searchTerm.length);
+
+            container.appendChild(highlightedElement);
+
+            currentPosition =
+                matchPosition + searchTerm.length;
+        }
+
+        const remainingText =
+            originalText.substring(currentPosition);
+
+        container.appendChild(
+            document.createTextNode(remainingText));
+    }
+</script>

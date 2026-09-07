@@ -37,7 +37,9 @@ namespace SmartDocumentSearch.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> ViewText(int id)
+        public async Task<IActionResult> ViewText(
+    int id,
+    string? searchTerm)
         {
             Document? document = await _context.Documents
                 .Include(d => d.Contents)
@@ -47,6 +49,21 @@ namespace SmartDocumentSearch.Controllers
             {
                 return NotFound();
             }
+
+            searchTerm = searchTerm?.Trim() ?? string.Empty;
+
+            int totalMatches = 0;
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                totalMatches = document.Contents.Sum(content =>
+                    CountOccurrences(
+                        content.ExtractedText,
+                        searchTerm));
+            }
+
+            ViewBag.SearchTerm = searchTerm;
+            ViewBag.TotalMatches = totalMatches;
 
             return View(document);
         }
