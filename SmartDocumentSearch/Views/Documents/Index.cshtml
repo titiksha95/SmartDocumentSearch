@@ -1,0 +1,87 @@
+﻿@model IEnumerable<SmartDocumentSearch.Models.Document>
+
+@{
+    ViewData["Title"] = "Documents";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between
+        align-items-center mb-4">
+
+        <div>
+            <h2>Uploaded Documents</h2>
+            <p class="text-muted mb-0">
+                Upload and search your documents.
+            </p>
+        </div>
+
+        <a asp-controller="Documents"
+           asp-action="Upload"
+           class="btn btn-primary">
+            Upload Document
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["SuccessMessage"]
+
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert">
+            </button>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            No documents have been uploaded yet.
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>File name</th>
+                            <th>Type</th>
+                            <th>Size</th>
+                            <th>Uploaded</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var document in Model)
+                        {
+                            <tr>
+                                <td>
+                                    @document.OriginalFileName
+                                </td>
+
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        @(document.FileType.TrimStart('.').ToUpper())
+                                    </span>
+                                </td>
+
+                                <td>
+                                    @((document.FileSize / 1024.0).ToString("0.00")) KB
+                                </td>
+
+                                <td>
+                                    @(document.UploadedAt
+                                        .ToLocalTime()
+                                        .ToString("dd MMM yyyy, hh:mm tt"))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
