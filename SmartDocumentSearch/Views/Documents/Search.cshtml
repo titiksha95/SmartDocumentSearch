@@ -1,0 +1,177 @@
+﻿@model SmartDocumentSearch.ViewModels.DocumentSearchViewModel
+
+@{
+    ViewData["Title"] = "Search Documents";
+}
+
+<div class="container mt-4">
+    <div class="text-center mb-4">
+        <h2>Search Documents</h2>
+
+        <p class="text-muted">
+            Search for a word or phrase inside your uploaded documents.
+        </p>
+    </div>
+
+    <div class="row justify-content-center mb-5">
+        <div class="col-md-8">
+            <form asp-controller="Documents"
+                  asp-action="Search"
+                  method="get">
+
+                <div class="input-group input-group-lg shadow-sm">
+                    <input type="text"
+                           name="searchTerm"
+                           value="@Model.SearchTerm"
+                           class="form-control"
+                           placeholder="Enter a word or phrase..."
+                           required />
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+    {
+        <div class="mb-4">
+            <h5>
+                Search results for:
+                <span class="text-primary">
+                    "@Model.SearchTerm"
+                </span>
+            </h5>
+
+            <p class="text-muted">
+                @Model.TotalMatches total occurrence(s) found in
+                @Model.Results.Count section(s).
+            </p>
+        </div>
+
+        @if (!Model.Results.Any())
+        {
+            <div class="alert alert-warning">
+                No matching text was found.
+            </div>
+        }
+        else
+        {
+            @foreach (var result in Model.Results)
+            {
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header d-flex
+                        justify-content-between
+                        align-items-center">
+
+                        <div>
+                            <strong>@result.FileName</strong>
+
+                            @if (result.PageNumber.HasValue)
+                            {
+                                <span class="badge bg-secondary ms-2">
+                                    Page @result.PageNumber
+                                </span>
+                            }
+                        </div>
+
+                        <span class="badge bg-primary">
+                            @result.MatchCount match(es)
+                        </span>
+                    </div>
+
+                    <div class="card-body">
+                        <p class="search-snippet mb-3">
+                            @result.TextSnippet
+                        </p>
+
+                        <a asp-controller="Documents"
+                           asp-action="ViewText"
+                           asp-route-id="@result.DocumentId"
+                           class="btn btn-sm btn-outline-primary">
+                            View Complete Text
+                        </a>
+                    </div>
+                </div>
+            }
+        }
+    }
+</div>
+
+<style>
+    .search-snippet {
+        line-height: 1.8;
+        overflow-wrap: anywhere;
+    }
+
+    .search-highlight {
+        background-color: #ffdf5d;
+        color: #000;
+        font-weight: 600;
+        padding: 1px 3px;
+        border-radius: 3px;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchTerm =
+            @Html.Raw(Json.Serialize(Model.SearchTerm));
+
+        if (!searchTerm) {
+            return;
+        }
+
+        const containers =
+            document.querySelectorAll(".search-snippet");
+
+        containers.forEach(function (container) {
+            highlightText(container, searchTerm);
+        });
+    });
+
+    function highlightText(container, searchTerm) {
+        const text = container.textContent;
+        const lowerText = text.toLowerCase();
+        const lowerSearchTerm = searchTerm.toLowerCase();
+
+        container.textContent = "";
+
+        let currentPosition = 0;
+        let matchPosition;
+
+        while ((matchPosition = lowerText.indexOf(
+            lowerSearchTerm,
+            currentPosition)) !== -1) {
+
+            const normalText = text.substring(
+                currentPosition,
+                matchPosition);
+
+            container.appendChild(
+                document.createTextNode(normalText));
+
+            const highlightedText =
+                document.createElement("mark");
+
+            highlightedText.className =
+                "search-highlight";
+
+            highlightedText.textContent = text.substring(
+                matchPosition,
+                matchPosition + searchTerm.length);
+
+            container.appendChild(highlightedText);
+
+            currentPosition =
+                matchPosition + searchTerm.length;
+        }
+
+        container.appendChild(
+            document.createTextNode(
+                text.substring(currentPosition)));
+    }
+</script>

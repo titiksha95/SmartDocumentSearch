@@ -4,7 +4,7 @@ using SmartDocumentSearch.Data;
 using SmartDocumentSearch.Interfaces;
 using SmartDocumentSearch.Models;
 using SmartDocumentSearch.Services;
-
+using SmartDocumentSearch.ViewModels;
 
 namespace SmartDocumentSearch.Controllers
 {
@@ -49,6 +49,135 @@ namespace SmartDocumentSearch.Controllers
             }
 
             return View(document);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Search(string? searchTerm)
+        {
+            DocumentSearchViewModel viewModel =
+                new DocumentSearchViewModel();
+
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return View(viewModel);
+            }
+
+            searchTerm = searchTerm.Trim();
+
+            viewModel.SearchTerm = searchTerm;
+
+            List<DocumentContent> matchingContents =
+                await _context.DocumentContents
+                    .Include(content => content.Document)
+                    .Where(content =>
+                        content.ExtractedText.Contains(searchTerm))
+                    .ToListAsync();
+
+            foreach (DocumentContent content in matchingContents)
+            {
+                int matchCount = CountOccurrences(
+                    content.ExtractedText,
+                    searchTerm);
+
+                viewModel.Results.Add(
+                    new DocumentSearchResultViewModel
+                    {
+                        DocumentId = content.DocumentId,
+
+                        FileName =
+                            content.Document?.OriginalFileName
+                            ?? "Unknown document",
+
+                        PageNumber = content.PageNumber,
+
+                        TextSnippet = CreateTextSnippet(
+                            content.ExtractedText,
+                            searchTerm),
+
+                        MatchCount = matchCount
+                    });
+
+                viewModel.TotalMatches += matchCount;
+            }
+
+            SearchHistory history = new SearchHistory
+            {
+                SearchTerm = searchTerm,
+                ResultCount = viewModel.TotalMatches,
+                SearchedAt = DateTime.UtcNow
+            };
+
+            _context.SearchHistories.Add(history);
+            await _context.SaveChangesAsync();
+
+            return View(viewModel);
+        }
+
+        private static int CountOccurrences(
+            string text,
+            string searchTerm)
+        {
+            int count = 0;
+            int currentPosition = 0;
+
+            while ((currentPosition = text.IndexOf(
+                searchTerm,
+                currentPosition,
+                StringComparison.OrdinalIgnoreCase)) >= 0)
+            {
+                count++;
+
+                currentPosition += searchTerm.Length;
+            }
+
+            return count;
+        }
+        private static string CreateTextSnippet(
+    string text,
+    string searchTerm)
+        {
+            int matchPosition = text.IndexOf(
+                searchTerm,
+                StringComparison.OrdinalIgnoreCase);
+
+            if (matchPosition < 0)
+            {
+                return string.Empty;
+            }
+
+            const int charactersBeforeMatch = 100;
+            const int totalSnippetLength = 300;
+
+            int startPosition = Math.Max(
+                0,
+                matchPosition - charactersBeforeMatch);
+
+            int availableLength =
+                text.Length - startPosition;
+
+            int snippetLength = Math.Min(
+                totalSnippetLength,
+                availableLength);
+
+            string snippet = text.Substring(
+                startPosition,
+                snippetLength);
+
+            snippet = snippet
+                .Replace("\r", " ")
+                .Replace("\n", " ");
+
+            if (startPosition > 0)
+            {
+                snippet = "... " + snippet;
+            }
+
+            if (startPosition + snippetLength < text.Length)
+            {
+                snippet += " ...";
+            }
+
+            return snippet;
         }
 
         // Display upload form
