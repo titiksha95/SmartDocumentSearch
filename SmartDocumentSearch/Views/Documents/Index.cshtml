@@ -51,6 +51,7 @@
                             <th>Type</th>
                             <th>Size</th>
                             <th>Uploaded</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
 
@@ -76,6 +77,14 @@
                                     @(document.UploadedAt
                                         .ToLocalTime()
                                         .ToString("dd MMM yyyy, hh:mm tt"))
+                                </td>
+                                <td>
+                                    <a asp-controller="Documents"
+                                       asp-action="ViewText"
+                                       asp-route-id="@document.DocumentId"
+                                       class="btn btn-sm btn-outline-primary">
+                                        View Text
+                                    </a>
                                 </td>
                             </tr>
                         }

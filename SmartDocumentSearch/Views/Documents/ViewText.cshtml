@@ -1,0 +1,118 @@
+﻿@model SmartDocumentSearch.Models.Document
+
+@{
+    ViewData["Title"] = "Document Text";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between
+        align-items-start mb-4">
+
+        <div>
+            <h2>@Model.OriginalFileName</h2>
+
+            <p class="text-muted mb-0">
+                Extracted document content
+            </p>
+        </div>
+
+        <a asp-controller="Documents"
+           asp-action="Index"
+           class="btn btn-outline-secondary">
+            Back to Documents
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            Document Information
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>File name</strong>
+                    <p>@Model.OriginalFileName</p>
+                </div>
+
+                <div class="col-md-2">
+                    <strong>File type</strong>
+                    <p>
+                        @(Model.FileType.TrimStart('.').ToUpper())
+                    </p>
+                </div>
+
+                <div class="col-md-2">
+                    <strong>File size</strong>
+                    <p>
+                        @((Model.FileSize / 1024.0)
+                            .ToString("0.00")) KB
+                    </p>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Uploaded</strong>
+                    <p>
+                        @(Model.UploadedAt
+                            .ToLocalTime()
+                            .ToString("dd MMM yyyy, hh:mm tt"))
+                    </p>
+                </div>
+
+                <div class="col-md-2">
+                    <strong>Sections</strong>
+                    <p>@Model.Contents.Count</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Contents.Any())
+    {
+        <div class="alert alert-warning">
+            No extracted text is available for this document.
+            Upload the document again to extract its text.
+        </div>
+    }
+    else
+    {
+        @foreach (var content in Model.Contents
+            .OrderBy(c => c.PageNumber ?? 1))
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    @if (content.PageNumber.HasValue)
+                    {
+                        <span>Page @content.PageNumber</span>
+                    }
+                    else
+                    {
+                        <span>Document Content</span>
+                    }
+                </div>
+
+                <div class="card-body">
+                    <div class="extracted-text">
+                        @content.ExtractedText
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .extracted-text {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        line-height: 1.7;
+        font-family: Arial, sans-serif;
+        font-size: 15px;
+        color: #212529;
+        max-height: 600px;
+        overflow-y: auto;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+</style>

@@ -1,21 +1,28 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartDocumentSearch.Data;
+using SmartDocumentSearch.Interfaces;
 using SmartDocumentSearch.Models;
+using SmartDocumentSearch.Services;
+
 
 namespace SmartDocumentSearch.Controllers
 {
+    
     public class DocumentsController : Controller
     {
+        private readonly ITextExtractionService _textExtractionService;
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
 
         public DocumentsController(
             ApplicationDbContext context,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            ITextExtractionService textExtractionService)
         {
             _context = context;
             _environment = environment;
+            _textExtractionService = textExtractionService;
         }
 
         // Display all uploaded documents
@@ -27,6 +34,21 @@ namespace SmartDocumentSearch.Controllers
                 .ToListAsync();
 
             return View(documents);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ViewText(int id)
+        {
+            Document? document = await _context.Documents
+                .Include(d => d.Contents)
+                .FirstOrDefaultAsync(d => d.DocumentId == id);
+
+            if (document == null)
+            {
+                return NotFound();
+            }
+
+            return View(document);
         }
 
         // Display upload form
@@ -50,7 +72,6 @@ namespace SmartDocumentSearch.Controllers
                 return View();
             }
 
-            // Maximum allowed size: 10 MB
             long maximumFileSize = 10 * 1024 * 1024;
 
             if (file.Length > maximumFileSize)
@@ -67,10 +88,10 @@ namespace SmartDocumentSearch.Controllers
 
             string[] allowedExtensions =
             {
-                ".pdf",
-                ".docx",
-                ".txt"
-            };
+        ".pdf",
+        ".docx",
+        ".txt"
+    };
 
             if (!allowedExtensions.Contains(extension))
             {
@@ -81,14 +102,12 @@ namespace SmartDocumentSearch.Controllers
                 return View();
             }
 
-            // Path: ProjectFolder/Uploads
             string uploadsFolder = Path.Combine(
                 _environment.ContentRootPath,
                 "Uploads");
 
             Directory.CreateDirectory(uploadsFolder);
 
-            // Unique name prevents files from overwriting each other
             string storedFileName =
                 $"{Guid.NewGuid()}{extension}";
 
@@ -98,16 +117,37 @@ namespace SmartDocumentSearch.Controllers
 
             try
             {
-                // Save physical file
-                await using (FileStream stream =
-                    new FileStream(
-                        completeFilePath,
-                        FileMode.CreateNew))
+                // Save the physical file
+                await using (FileStream stream = new FileStream(
+                    completeFilePath,
+                    FileMode.CreateNew))
                 {
                     await file.CopyToAsync(stream);
                 }
 
-                // Save information in the Documents table
+                // Extract text according to file type
+                List<ExtractedPage> extractedPages =
+                    await _textExtractionService.ExtractTextAsync(
+                        completeFilePath,
+                        extension);
+
+                if (extractedPages.Count == 0)
+                {
+                    if (System.IO.File.Exists(completeFilePath))
+                    {
+                        System.IO.File.Delete(completeFilePath);
+                    }
+
+                    ModelState.AddModelError(
+                        "",
+                        "No readable text was found in the document.");
+
+                    return View();
+                }
+
+                await using var transaction =
+                    await _context.Database.BeginTransactionAsync();
+
                 Document document = new Document
                 {
                     OriginalFileName =
@@ -125,16 +165,33 @@ namespace SmartDocumentSearch.Controllers
                 };
 
                 _context.Documents.Add(document);
+
+                // First save creates DocumentId
                 await _context.SaveChangesAsync();
 
+                List<DocumentContent> contents =
+                    extractedPages.Select(page =>
+                        new DocumentContent
+                        {
+                            DocumentId = document.DocumentId,
+                            PageNumber = page.PageNumber,
+                            ExtractedText = page.Text
+                        })
+                        .ToList();
+
+                _context.DocumentContents.AddRange(contents);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
                 TempData["SuccessMessage"] =
-                    "Document uploaded successfully.";
+                    $"Document uploaded successfully. " +
+                    $"{extractedPages.Count} section(s) extracted.";
 
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception)
             {
-                // Remove the physical file if database saving fails
                 if (System.IO.File.Exists(completeFilePath))
                 {
                     System.IO.File.Delete(completeFilePath);
@@ -142,7 +199,8 @@ namespace SmartDocumentSearch.Controllers
 
                 ModelState.AddModelError(
                     "",
-                    "The document could not be uploaded.");
+                    "The document could not be processed. " +
+                    "Make sure it is a valid, readable document.");
 
                 return View();
             }
