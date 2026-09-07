@@ -1,0 +1,77 @@
+﻿@model SmartDocumentSearch.Models.Document
+
+@{
+    ViewData["Title"] = "Delete Document";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Delete Document</h4>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="alert alert-warning">
+                        This will delete the original file and
+                        all its extracted text.
+                    </div>
+
+                    <dl class="row">
+                        <dt class="col-sm-4">File name</dt>
+
+                        <dd class="col-sm-8">
+                            @Model.OriginalFileName
+                        </dd>
+
+                        <dt class="col-sm-4">File type</dt>
+
+                        <dd class="col-sm-8">
+                            @(Model.FileType
+                                .TrimStart('.')
+                                .ToUpper())
+                        </dd>
+
+                        <dt class="col-sm-4">File size</dt>
+
+                        <dd class="col-sm-8">
+                            @((Model.FileSize / 1024.0)
+                                .ToString("0.00")) KB
+                        </dd>
+
+                        <dt class="col-sm-4">Uploaded</dt>
+
+                        <dd class="col-sm-8">
+                            @(Model.UploadedAt
+                                .ToLocalTime()
+                                .ToString("dd MMM yyyy, hh:mm tt"))
+                        </dd>
+                    </dl>
+
+                    <form asp-controller="Documents"
+                          asp-action="DeleteConfirmed"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.DocumentId" />
+
+                        <button type="submit"
+                                class="btn btn-danger">
+                            Yes, Delete
+                        </button>
+
+                        <a asp-controller="Documents"
+                           asp-action="Index"
+                           class="btn btn-secondary">
+                            Cancel
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

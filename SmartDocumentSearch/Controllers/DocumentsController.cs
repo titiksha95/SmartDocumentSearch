@@ -69,6 +69,96 @@ namespace SmartDocumentSearch.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Download(int id)
+        {
+            Document? document = await _context.Documents
+                .FirstOrDefaultAsync(d => d.DocumentId == id);
+
+            if (document == null)
+            {
+                return NotFound();
+            }
+
+            if (!System.IO.File.Exists(document.FilePath))
+            {
+                return NotFound("The physical file was not found.");
+            }
+
+            string contentType = document.FileType.ToLowerInvariant() switch
+            {
+                ".pdf" =>
+                    "application/pdf",
+
+                ".docx" =>
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+                ".txt" =>
+                    "text/plain",
+
+                _ =>
+                    "application/octet-stream"
+            };
+
+            return PhysicalFile(
+                document.FilePath,
+                contentType,
+                document.OriginalFileName);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Delete(int id)
+        {
+            Document? document = await _context.Documents
+                .FirstOrDefaultAsync(d => d.DocumentId == id);
+
+            if (document == null)
+            {
+                return NotFound();
+            }
+
+            return View(document);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            Document? document = await _context.Documents
+                .Include(d => d.Contents)
+                .FirstOrDefaultAsync(d => d.DocumentId == id);
+
+            if (document == null)
+            {
+                return NotFound();
+            }
+
+            string filePath = document.FilePath;
+
+            try
+            {
+                _context.Documents.Remove(document);
+                await _context.SaveChangesAsync();
+
+                if (System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                }
+
+                TempData["SuccessMessage"] =
+                    "Document deleted successfully.";
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                TempData["ErrorMessage"] =
+                    "The document could not be deleted.";
+
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Search(string? searchTerm)
         {
             DocumentSearchViewModel viewModel =

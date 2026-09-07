@@ -34,6 +34,18 @@
         </div>
     }
 
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["ErrorMessage"]
+
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert">
+            </button>
+        </div>
+    }
+
     @if (!Model.Any())
     {
         <div class="alert alert-info">
@@ -79,12 +91,28 @@
                                         .ToString("dd MMM yyyy, hh:mm tt"))
                                 </td>
                                 <td>
-                                    <a asp-controller="Documents"
-                                       asp-action="ViewText"
-                                       asp-route-id="@document.DocumentId"
-                                       class="btn btn-sm btn-outline-primary">
-                                        View Text
-                                    </a>
+                                    <div class="d-flex gap-2">
+                                        <a asp-controller="Documents"
+                                           asp-action="ViewText"
+                                           asp-route-id="@document.DocumentId"
+                                           class="btn btn-sm btn-outline-primary">
+                                            View Text
+                                        </a>
+
+                                        <a asp-controller="Documents"
+                                           asp-action="Download"
+                                           asp-route-id="@document.DocumentId"
+                                           class="btn btn-sm btn-outline-success">
+                                            Download
+                                        </a>
+
+                                        <a asp-controller="Documents"
+                                           asp-action="Delete"
+                                           asp-route-id="@document.DocumentId"
+                                           class="btn btn-sm btn-outline-danger">
+                                            Delete
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         }
